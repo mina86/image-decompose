@@ -11,31 +11,41 @@ mod cli;
 mod spaces;
 
 
-fn perr_impl(
-    mut out: impl std::io::Write,
-    path: &std::ffi::OsStr,
-    msg: impl std::fmt::Display,
-) {
-    let path = std::os::unix::ffi::OsStrExt::as_bytes(path);
-    if out.write_all(path).is_ok() {
-        writeln!(out, ": {}", msg).ok();
+fn perr_impl(path: &std::ffi::OsStr, msg: std::fmt::Arguments) {
+    fn inner(
+        mut out: impl std::io::Write,
+        path: &[u8],
+        msg: std::fmt::Arguments,
+    ) -> bool {
+        out.write_all(path).is_ok() &&
+            out.write_all(b": ").is_ok() &&
+            out.write_fmt(msg).is_ok() &&
+            out.write_all(b"\n").is_ok()
     }
+    let path = std::os::unix::ffi::OsStrExt::as_bytes(path);
+    inner(std::io::stderr().lock(), path, msg);
 }
 
-fn perr(path: impl AsRef<std::ffi::OsStr>, msg: impl std::fmt::Display) {
-    perr_impl(std::io::stderr().lock(), path.as_ref(), msg);
+macro_rules! perr {
+    ($path:expr, $fmt:literal, $($arg:tt)*) => {{
+        let path: &::std::ffi::OsStr = $path.as_ref();
+        crate::perr_impl(path, std::format_args!($fmt, $($arg)*));
+    }};
+    ($path:expr, $msg:expr) => {
+        perr!($path, "{}", $msg);
+    };
 }
 
 
 fn load(path: &std::path::PathBuf) -> Option<image::RgbImage> {
     match image::io::Reader::open(path) {
         Err(e) => {
-            perr(path, e);
+            perr!(path, e);
             None
         }
         Ok(rd) => match rd.decode() {
             Err(e) => {
-                perr(path, format_args!("error decoding: {}", e));
+                perr!(path, "error decoding: {}", e);
                 None
             }
             Ok(img) => Some(img.into_rgb8()),
@@ -81,7 +91,7 @@ fn write_prompt(
     file: &std::path::Path,
 ) -> std::io::Result<()> {
     out.write_all(std::os::unix::ffi::OsStrExt::as_bytes(file.as_os_str()))?;
-    write!(out, "file exists, overwrite? [y/N] ")?;
+    write!(out, ": file exists, overwrite? [y/N] ")?;
     out.flush()
 }
 
@@ -89,7 +99,7 @@ fn confirm_overwrite(opts: &cli::Opts, file: &std::path::Path) -> bool {
     if opts.force || !file.exists() {
         return true;
     } else if !opts.interactive {
-        perr(file, "file already exists, skipping");
+        perr!(file, "file already exists, skipping");
         return false;
     }
 
@@ -97,7 +107,7 @@ fn confirm_overwrite(opts: &cli::Opts, file: &std::path::Path) -> bool {
     loop {
         if let Err(err) = write_prompt(std::io::stdout().lock(), file) {
             eprintln!("stdout: {}", err);
-            perr(file, "file already exists, skipping");
+            perr!(file, "file already exists, skipping");
             return false;
         }
         buf.clear();
@@ -125,17 +135,14 @@ fn process_file(opts: &cli::Opts, file: &std::path::PathBuf) -> bool {
     let out_dir = match output_directory(&opts.out_dir, file) {
         Ok(dir) => dir,
         Err(err) => {
-            perr(
-                file,
-                format_args!("unable to determine parent directory: {}", err),
-            );
+            perr!(file, "unable to determine parent directory: {}", err);
             return false;
         }
     };
     let file_stem = match file.file_stem() {
         Some(name) => name,
         None => {
-            perr(file, "unable to determine file stem");
+            perr!(file, "unable to determine file stem");
             return false;
         }
     };
@@ -158,7 +165,7 @@ fn process_file(opts: &cli::Opts, file: &std::path::PathBuf) -> bool {
         if let Err(err) = std::fs::File::create(&out_file)
             .and_then(|mut fd| fd.write_all(&enc))
         {
-            perr(&out_file, err);
+            perr!(out_file, err);
             ok = false;
         }
     }
@@ -169,7 +176,7 @@ fn main() -> std::process::ExitCode {
     let opts = <cli::Opts as clap::Clap>::parse();
     if let Some(dir) = &opts.out_dir {
         if let Err(err) = std::fs::create_dir_all(dir) {
-            perr(dir, err);
+            perr!(dir, err);
             return std::process::ExitCode::FAILURE;
         }
     }
