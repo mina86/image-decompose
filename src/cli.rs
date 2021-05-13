@@ -3,6 +3,33 @@ use std::str::FromStr;
 use clap::Clap;
 
 
+#[macro_export]
+macro_rules! perr {
+    ($path:expr, $fmt:literal, $($arg:tt)*) => {{
+        let path: &::std::ffi::OsStr = $path.as_ref();
+        crate::cli::perr_impl(path, std::format_args!($fmt, $($arg)*));
+    }};
+    ($path:expr, $msg:expr) => {
+        crate::perr!($path, "{}", $msg);
+    };
+}
+
+pub fn perr_impl(path: &std::ffi::OsStr, msg: std::fmt::Arguments) {
+    fn inner(
+        mut out: impl std::io::Write,
+        path: &[u8],
+        msg: std::fmt::Arguments,
+    ) -> bool {
+        out.write_all(path).is_ok() &&
+            out.write_all(b": ").is_ok() &&
+            out.write_fmt(msg).is_ok() &&
+            out.write_all(b"\n").is_ok()
+    }
+    let path = std::os::unix::ffi::OsStrExt::as_bytes(path);
+    inner(std::io::stderr().lock(), path, msg);
+}
+
+
 struct Quality(pub f32);
 
 impl std::str::FromStr for Quality {

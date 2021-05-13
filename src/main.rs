@@ -7,34 +7,9 @@
 use std::io::BufRead;
 use std::io::Write;
 
+#[macro_use]
 mod cli;
 mod spaces;
-
-
-fn perr_impl(path: &std::ffi::OsStr, msg: std::fmt::Arguments) {
-    fn inner(
-        mut out: impl std::io::Write,
-        path: &[u8],
-        msg: std::fmt::Arguments,
-    ) -> bool {
-        out.write_all(path).is_ok() &&
-            out.write_all(b": ").is_ok() &&
-            out.write_fmt(msg).is_ok() &&
-            out.write_all(b"\n").is_ok()
-    }
-    let path = std::os::unix::ffi::OsStrExt::as_bytes(path);
-    inner(std::io::stderr().lock(), path, msg);
-}
-
-macro_rules! perr {
-    ($path:expr, $fmt:literal, $($arg:tt)*) => {{
-        let path: &::std::ffi::OsStr = $path.as_ref();
-        crate::perr_impl(path, std::format_args!($fmt, $($arg)*));
-    }};
-    ($path:expr, $msg:expr) => {
-        perr!($path, "{}", $msg);
-    };
-}
 
 
 fn load(path: &std::path::PathBuf) -> Option<image::RgbImage> {
