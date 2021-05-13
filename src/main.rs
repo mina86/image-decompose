@@ -71,7 +71,7 @@ fn write_prompt(
 }
 
 fn confirm_overwrite(opts: &cli::Opts, file: &std::path::Path) -> bool {
-    if opts.force || !file.exists() {
+    if opts.yes || !file.exists() {
         return true;
     } else if !opts.interactive {
         perr!(file, "file already exists, skipping");

@@ -220,15 +220,15 @@ pub struct Opts {
     /// Without this or `-i` flag, output files which already exist will be
     /// skipped.
     #[clap(short, long, overrides_with = "interactive")]
-    pub force: bool,
-    /// Ask before overwriting existing files.  Overrides the `-f` flag. Without
-    /// this or `-f` flag, output files which already exist will be skipped.
+    pub yes: bool,
+    /// Ask before overwriting existing files.  Overrides the `-y` flag. Without
+    /// this or `-y` flag, output files which already exist will be skipped.
     #[clap(short, long)]
     pub interactive: bool,
 
     /// Saves resulting WebP images with given quality.  Quality can be any
-    /// number from 0 to 100 or ‘lossless’ to save as a lossless WebP.
-    /// Overrides `--lossless` flag.  The default quality is 90
+    /// number from 0 to 100 or ‘lossless’ to save as a lossless WebP.  The
+    /// default quality is 90
     #[clap(short, long, default_value = "90")]
     quality: Quality,
     /// Alias of ‘--quality=lossless’.
