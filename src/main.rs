@@ -64,10 +64,11 @@ fn output_file_name(
     file_stem: &std::ffi::OsStr,
 ) -> std::path::PathBuf {
     let bytes = std::os::unix::ffi::OsStrExt::as_bytes(file_stem);
-    let mut buf = Vec::<u8>::with_capacity(bytes.len() + 16);
+    let suffix = space.get_file_suffix();
+    let mut buf = Vec::<u8>::with_capacity(bytes.len() + suffix.len() + 6);
     buf.extend_from_slice(bytes);
     buf.push(b'-');
-    buf.extend_from_slice(space.get_file_suffix());
+    buf.extend_from_slice(suffix);
     buf.extend_from_slice(b".webp");
     let file_name: std::ffi::OsString =
         std::os::unix::ffi::OsStringExt::from_vec(buf);
