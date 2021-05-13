@@ -68,7 +68,7 @@ fn output_file_name(
     buf.extend_from_slice(bytes);
     buf.push(b'-');
     buf.extend_from_slice(space.get_file_suffix());
-    buf.extend_from_slice(&b".webp"[..]);
+    buf.extend_from_slice(b".webp");
     let file_name: std::ffi::OsString =
         std::os::unix::ffi::OsStringExt::from_vec(buf);
     out_dir.join(file_name)
