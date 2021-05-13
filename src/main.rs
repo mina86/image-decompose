@@ -144,7 +144,7 @@ fn process_file(opts: &cli::Opts, file: &std::path::PathBuf) -> bool {
         return false;
     };
     let mut ok = true;
-    for space in spaces::all().iter().copied() {
+    for space in spaces::SPACES.iter().copied() {
         let out_file = output_file_name(space, out_dir.as_ref(), file_stem);
         if !confirm_overwrite(opts, &out_file) {
             continue;

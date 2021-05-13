@@ -365,23 +365,13 @@ impl Space for LChuvSpace {
 }
 
 
-static RGB_SPACE: RgbSpace = RgbSpace;
-static HSL_SPACE: HslSpace = HslSpace;
-static HSV_SPACE: HsvSpace = HsvSpace;
-static HWB_SPACE: HwbSpace = HwbSpace;
-static LAB_SPACE: LabSpace = LabSpace;
-static LCHAB_SPACE: LChabSpace = LChabSpace;
-static LUV_SPACE: LuvSpace = LuvSpace;
-static LCHUV_SPACE: LChuvSpace = LChuvSpace;
-static SPACES: [&dyn Space; 8] = [
-    &RGB_SPACE,
-    &HSL_SPACE,
-    &HSV_SPACE,
-    &HWB_SPACE,
-    &LAB_SPACE,
-    &LCHAB_SPACE,
-    &LUV_SPACE,
-    &LCHUV_SPACE,
+pub static SPACES: [&dyn Space; 8] = [
+    &RgbSpace,
+    &HslSpace,
+    &HsvSpace,
+    &HwbSpace,
+    &LabSpace,
+    &LChabSpace,
+    &LuvSpace,
+    &LChuvSpace,
 ];
-
-pub fn all() -> &'static [&'static dyn Space] { &SPACES[..] }
