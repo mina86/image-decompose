@@ -157,7 +157,6 @@ fn test_crop_from_str() {
     ok("10x20+30+40", "10x20+30+40");
     ok("10x20-30+40", "10x20-30+40");
     ok("10x20+30-40", "10x20+30-40");
-    ok("368x0+250+500", "368x0+250+500");
 
     assert_eq!(None, Crop::from_str("").ok());
     assert_eq!(None, Crop::from_str("10X20").ok());

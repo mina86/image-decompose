@@ -130,9 +130,7 @@ impl Space for HslSpace {
         (hue, saturation, sum as f32 * 0.5)
     }
 
-    fn rgb_from_fst(&self, value: f32) -> Rgb {
-        hs_common_hue_to_rgb(value)
-    }
+    fn rgb_from_fst(&self, value: f32) -> Rgb { hs_common_hue_to_rgb(value) }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
         let v = (value * 255.0) as u8;
         Rgb::from([v, v, v])
@@ -161,9 +159,7 @@ impl Space for HsvSpace {
         (hue, saturation, max as f32)
     }
 
-    fn rgb_from_fst(&self, value: f32) -> Rgb {
-        hs_common_hue_to_rgb(value)
-    }
+    fn rgb_from_fst(&self, value: f32) -> Rgb { hs_common_hue_to_rgb(value) }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
         let v = (value * 255.0) as u8;
         Rgb::from([v, v, v])
@@ -181,13 +177,11 @@ impl Space for HwbSpace {
     fn get_file_suffix(&self) -> &[u8] { b"hwb" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let (hue, min, max, _sum, range) = hs_common_from_rgb(rgb);
+        let (hue, min, max, _sum, _range) = hs_common_from_rgb(rgb);
         (hue, min as f32, (255 - max) as f32)
     }
 
-    fn rgb_from_fst(&self, value: f32) -> Rgb {
-        hs_common_hue_to_rgb(value)
-    }
+    fn rgb_from_fst(&self, value: f32) -> Rgb { hs_common_hue_to_rgb(value) }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
         let v = value as u8;
         Rgb::from([v, v, v])
