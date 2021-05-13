@@ -1,0 +1,19 @@
+[package]
+name          = "image-decompose"
+description   = "Decomposes image into separate channels in different colour spaces"
+version       = "0.1.0"
+readme        = "README.md"
+categories    = ["graphics", "multimedia::images"]
+keywords      = ["rgb", "lab", "luv", "hsl", "image"]
+authors       = ["Michal Nazarewicz <mina86@mina86.com>"]
+license       = "GPL-3.0-or-later"
+repository    = "https://github.com/mina86/image-decompose"
+documentation = "https://docs.rs/image-decompose"
+edition       = "2018"
+
+[dependencies]
+image = "0.23"
+lab = "0.9"
+luv = "0.9"
+webp = "0.1"
+clap = "3.0.0-beta.2"
