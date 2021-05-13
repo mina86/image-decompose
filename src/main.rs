@@ -1,10 +1,10 @@
 #![feature(
+    maybe_uninit_write_slice,
     process_exitcode_placeholder,
-    vec_into_raw_parts,
-    maybe_uninit_write_slice
+    result_into_ok_or_err,
+    vec_into_raw_parts
 )]
 
-use std::io::BufRead;
 use std::io::Write;
 
 #[macro_use]
@@ -61,52 +61,11 @@ fn output_file_name(
 }
 
 
-fn write_prompt(
-    mut out: impl std::io::Write,
-    file: &std::path::Path,
-) -> std::io::Result<()> {
-    out.write_all(std::os::unix::ffi::OsStrExt::as_bytes(file.as_os_str()))?;
-    write!(out, ": file exists, overwrite? [y/N] ")?;
-    out.flush()
-}
-
-fn confirm_overwrite(opts: &cli::Opts, file: &std::path::Path) -> bool {
-    if opts.yes || !file.exists() {
-        return true;
-    } else if !opts.interactive {
-        perr!(file, "file already exists, skipping");
-        return false;
-    }
-
-    let mut buf = Vec::<u8>::new();
-    loop {
-        if let Err(err) = write_prompt(std::io::stdout().lock(), file) {
-            eprintln!("stdout: {}", err);
-            perr!(file, "file already exists, skipping");
-            return false;
-        }
-        buf.clear();
-        if let Err(err) = std::io::stdin().lock().read_until(b'\n', &mut buf) {
-            eprintln!("stdin: {}", err);
-            break false;
-        } else if buf.is_empty() {
-            break false;
-        }
-        while !buf.is_empty() &&
-            (buf[buf.len() - 1] == b'\n' || buf[buf.len() - 1] == b'\r')
-        {
-            buf.pop();
-        }
-        if buf == b"y" || buf == b"Y" {
-            break true;
-        } else if buf.is_empty() || buf == b"n" || buf == b"N" {
-            break false;
-        }
-    }
-}
-
-
-fn process_file(opts: &cli::Opts, file: &std::path::PathBuf) -> bool {
+fn process_file(
+    opts: &cli::Opts,
+    confirmer: &cli::Confirmer,
+    file: &std::path::PathBuf,
+) -> bool {
     let out_dir = match output_directory(&opts.out_dir, file) {
         Ok(dir) => dir,
         Err(err) => {
@@ -129,7 +88,7 @@ fn process_file(opts: &cli::Opts, file: &std::path::PathBuf) -> bool {
     let mut ok = true;
     for space in spaces::SPACES.iter().copied() {
         let out_file = output_file_name(space, out_dir.as_ref(), file_stem);
-        if !confirm_overwrite(opts, &out_file) {
+        if !confirmer.confirm(&out_file) {
             continue;
         }
         eprintln!("Generating {}...", out_file.to_string_lossy());
@@ -155,10 +114,11 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     }
+    let confirmer = cli::Confirmer::new(&opts);
     let errors = opts
         .files
         .iter()
-        .filter(|file| !process_file(&opts, file))
+        .filter(|file| !process_file(&opts, &confirmer, file))
         .count();
     if errors == 0 {
         std::process::ExitCode::SUCCESS

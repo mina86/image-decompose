@@ -1,3 +1,4 @@
+use std::io::BufRead;
 use std::str::FromStr;
 
 use clap::Clap;
@@ -309,5 +310,90 @@ impl Opts {
 
     pub fn resize_and_crop_image(&self, i: image::RgbImage) -> image::RgbImage {
         self.crop_image(self.resize_image(i))
+    }
+}
+
+
+pub enum Confirmer {
+    Skip,
+    Overwrite,
+    Interactive(std::sync::Mutex<ConfirmerInner>),
+}
+
+#[allow(private_in_public)]
+struct ConfirmerInner;
+
+impl Confirmer {
+    pub fn new(opts: &Opts) -> Self {
+        if opts.yes {
+            Self::Overwrite
+        } else if opts.interactive {
+            Self::Interactive(std::sync::Mutex::new(ConfirmerInner))
+        } else {
+            Self::Skip
+        }
+    }
+
+    pub fn confirm(&self, file: &std::path::Path) -> bool {
+        match self {
+            Self::Overwrite => return true,
+            _ if !file.exists() => return true,
+            Self::Skip => (),
+            Self::Interactive(mutex) => {
+                let res = mutex
+                    .lock()
+                    .map_err(|p| p.into_inner())
+                    .into_ok_or_err()
+                    .confirm(file);
+                match res {
+                    Ok(ans) => return ans,
+                    Err((a, b)) => eprintln!("{}: {}", a, b),
+                }
+            }
+        }
+        super::perr!(file, "file already exists, skipping");
+        false
+    }
+}
+
+fn write_prompt(
+    mut out: impl std::io::Write,
+    file: &std::path::Path,
+) -> std::io::Result<()> {
+    out.write_all(std::os::unix::ffi::OsStrExt::as_bytes(file.as_os_str()))?;
+    write!(out, ": file exists, overwrite? [y/N] ")?;
+    out.flush()
+}
+
+impl ConfirmerInner {
+    fn confirm(
+        &self,
+        file: &std::path::Path,
+    ) -> std::result::Result<bool, (&'static str, std::io::Error)> {
+        let mut buf = Vec::<u8>::new();
+        loop {
+            if let Err(err) = write_prompt(std::io::stdout().lock(), file) {
+                break Err(("stdout", err));
+            }
+            buf.clear();
+            if let Err(err) =
+                std::io::stdin().lock().read_until(b'\n', &mut buf)
+            {
+                break Err(("stdin", err));
+            } else if buf.is_empty() {
+                println!("N");
+                break Ok(false);
+            }
+            while !buf.is_empty() &&
+                (buf[buf.len() - 1] == b'\n' || buf[buf.len() - 1] == b'\r')
+            {
+                buf.pop();
+            }
+            if buf == b"y" || buf == b"Y" {
+                break Ok(true);
+            } else if buf.is_empty() || buf == b"n" || buf == b"N" {
+                break Ok(false);
+            }
+        }
     }
 }
