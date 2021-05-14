@@ -122,6 +122,13 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     }
+    if let Some(num) = opts.jobs {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(num.max(1))
+            .build_global()
+            .err()
+            .map(|err| eprintln!("{}", err));
+    }
     let confirmer = cli::Confirmer::new(&opts);
     let errors = opts
         .files

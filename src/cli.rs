@@ -227,7 +227,7 @@ pub struct Opts {
     #[clap(short, long)]
     pub interactive: bool,
 
-    /// Saves resulting WebP images with given quality.  Quality can be any
+    /// Save resulting WebP images with given quality.  Quality can be any
     /// number from 0 to 100 or ‘lossless’ to save as a lossless WebP.  The
     /// default quality is 90
     #[clap(short, long, default_value = "90")]
@@ -258,6 +258,12 @@ pub struct Opts {
     /// different specifications, the command needs to be called multiple times.
     #[clap(long)]
     crop: Option<Crop>,
+
+    /// Run at most given number of threads in parallel.  By default, program
+    /// will run one thread per logical CPU core.  Specifying zero or one
+    /// effectively disables parallelism.
+    #[clap(short, long)]
+    pub jobs: Option<usize>,
 }
 
 impl Opts {
