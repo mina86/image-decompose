@@ -22,7 +22,7 @@ fn paste_from_fn<Encode: Fn(Tripple) -> Rgb>(
 
 
 pub trait Space: Sync {
-    fn get_file_suffix(&self) -> &[u8];
+    fn get_file_suffix(&self) -> &str;
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple;
     fn rgb_from_fst(&self, value: f32) -> Rgb;
@@ -57,7 +57,7 @@ pub trait Space: Sync {
 struct RgbSpace;
 
 impl Space for RgbSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"rgb" }
+    fn get_file_suffix(&self) -> &str { "rgb" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let [r, g, b] = rgb.0;
@@ -73,7 +73,7 @@ impl Space for RgbSpace {
 struct LinearRgbSpace;
 
 impl Space for LinearRgbSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"lin-rgb" }
+    fn get_file_suffix(&self) -> &str { "lin-rgb" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let [r, g, b] = srgb::gamma::linear_from_u8(rgb.0);
@@ -94,7 +94,7 @@ fn grey(value: f32) -> Rgb {
 struct XYZSpace;
 
 impl Space for XYZSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"XYZ" }
+    fn get_file_suffix(&self) -> &str { "XYZ" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let [x, y, z] = srgb::xyz_from_u8(rgb.0);
@@ -114,7 +114,7 @@ impl Space for XYZSpace {
 struct XYYSpace;
 
 impl Space for XYYSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"xyY" }
+    fn get_file_suffix(&self) -> &str { "xyY" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let [x, y, z] = srgb::xyz_from_u8(rgb.0);
@@ -181,7 +181,7 @@ fn hs_common_hue_to_rgb(hue: f32) -> Rgb {
 struct HslSpace;
 
 impl Space for HslSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"hsl" }
+    fn get_file_suffix(&self) -> &str { "hsl" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let (hue, _min, _max, sum, range) = hs_common_from_rgb(rgb);
@@ -210,7 +210,7 @@ impl Space for HslSpace {
 struct HsvSpace;
 
 impl Space for HsvSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"hsv" }
+    fn get_file_suffix(&self) -> &str { "hsv" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let (hue, _min, max, _sum, range) = hs_common_from_rgb(rgb);
@@ -239,7 +239,7 @@ impl Space for HsvSpace {
 struct HwbSpace;
 
 impl Space for HwbSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"hwb" }
+    fn get_file_suffix(&self) -> &str { "hwb" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let (hue, min, max, _sum, _range) = hs_common_from_rgb(rgb);
@@ -261,7 +261,7 @@ impl Space for HwbSpace {
 struct LabSpace;
 
 impl Space for LabSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"lab" }
+    fn get_file_suffix(&self) -> &str { "lab" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let lab = lab::Lab::from_rgb(&rgb.0);
@@ -304,7 +304,7 @@ impl Space for LabSpace {
 struct LChabSpace;
 
 impl Space for LChabSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"lchab" }
+    fn get_file_suffix(&self) -> &str { "lchab" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let lch = lab::LCh::from_rgb(&rgb.0);
@@ -347,7 +347,7 @@ impl Space for LChabSpace {
 struct LuvSpace;
 
 impl Space for LuvSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"luv" }
+    fn get_file_suffix(&self) -> &str { "luv" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let luv = luv::Luv::from_rgb(&rgb.0);
@@ -390,7 +390,7 @@ impl Space for LuvSpace {
 struct LChuvSpace;
 
 impl Space for LChuvSpace {
-    fn get_file_suffix(&self) -> &[u8] { b"lchuv" }
+    fn get_file_suffix(&self) -> &str { "lchuv" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let lch = luv::LCh::from_rgb(&rgb.0);

@@ -194,6 +194,29 @@ fn test_crop_from_str() {
 }
 
 
+pub struct SpaceArg(pub &'static dyn super::spaces::Space);
+
+impl std::str::FromStr for SpaceArg {
+    type Err = std::string::String;
+
+    fn from_str(arg: &str) -> Result<Self, Self::Err> {
+        if let Some(&space) = super::spaces::SPACES
+            .iter()
+            .find(|&space| arg.eq_ignore_ascii_case(space.get_file_suffix()))
+        {
+            Ok(SpaceArg(space))
+        } else {
+            let spaces = super::spaces::SPACES
+                .iter()
+                .map(|space| space.get_file_suffix())
+                .collect::<Vec<&'static str>>()
+                .join(", ");
+            Err(["supported colour spaces: ", &spaces].concat())
+        }
+    }
+}
+
+
 #[derive(Clap)]
 #[clap(
     max_term_width = 80,
@@ -226,6 +249,14 @@ pub struct Opts {
     /// this or `-y` flag, output files which already exist will be skipped.
     #[clap(short, long)]
     pub interactive: bool,
+
+    /// Generate decomposition images for specified colours spaces.  If not
+    /// provided, generate images for all supported colour spaces.  Supported
+    /// spaces are RGB, lin-RGB (linear RGB w/o gamma correction), XYZ, xyY,
+    /// HSL, HSV, HWB, Lab, LCHab, Luv and LCHuv.  Names are compared
+    /// case-insensitively.
+    #[clap(short, long, value_delimiter(","))]
+    pub spaces: Vec<SpaceArg>,
 
     /// Save resulting WebP images with given quality.  Quality can be any
     /// number from 0 to 100 or ‘lossless’ to save as a lossless WebP.  The

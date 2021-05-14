@@ -55,7 +55,7 @@ fn output_file_name(
     let mut buf = Vec::<u8>::with_capacity(bytes.len() + suffix.len() + 6);
     buf.extend_from_slice(bytes);
     buf.push(b'-');
-    buf.extend_from_slice(suffix);
+    buf.extend_from_slice(suffix.as_bytes());
     buf.extend_from_slice(b".webp");
     let file_name: std::ffi::OsString =
         std::os::unix::ffi::OsStringExt::from_vec(buf);
@@ -88,16 +88,17 @@ fn process_file(
     } else {
         return false;
     };
-    let errors = spaces::SPACES
+    let errors = opts
+        .spaces
         .par_iter()
-        .filter(|&space| {
+        .filter(|space| {
             let out_file =
-                output_file_name(*space, out_dir.as_ref(), file_stem);
+                output_file_name(space.0, out_dir.as_ref(), file_stem);
             if !confirmer.confirm(&out_file) {
                 return true;
             }
             eprintln!("Generating {}...", out_file.to_string_lossy());
-            let img = space.build_image(&img);
+            let img = space.0.build_image(&img);
             let enc = opts.encode(webp::Encoder::from_image(
                 &image::DynamicImage::ImageRgb8(img),
             ));
@@ -115,13 +116,21 @@ fn process_file(
 }
 
 fn main() -> std::process::ExitCode {
-    let opts = <cli::Opts as clap::Clap>::parse();
+    let mut opts = <cli::Opts as clap::Clap>::parse();
     if let Some(dir) = &opts.out_dir {
         if let Err(err) = std::fs::create_dir_all(dir) {
             perr!(dir, err);
             return std::process::ExitCode::FAILURE;
         }
     }
+    if opts.spaces.is_empty() {
+        opts.spaces
+            .extend(spaces::SPACES.iter().map(|&sp| cli::SpaceArg(sp)));
+    } else {
+        opts.spaces.sort_by_key(|space| space.0.get_file_suffix());
+        opts.spaces.dedup_by_key(|space| space.0 as *const _);
+    }
+    let opts = opts;
     if let Some(num) = opts.jobs {
         rayon::ThreadPoolBuilder::new()
             .num_threads(num.max(1))
