@@ -27,25 +27,6 @@ fn perr(path: impl AsRef<std::ffi::OsStr>, msg: impl std::fmt::Display) {
 }
 
 
-#[derive(Clone, Copy)]
-struct Quality(pub f32);
-
-impl std::str::FromStr for Quality {
-    type Err = std::string::String;
-
-    fn from_str(q: &str) -> std::result::Result<Self, Self::Err> {
-        if q.eq_ignore_ascii_case("lossless") {
-            return Ok(Self(f32::INFINITY));
-        }
-        match f32::from_str(q) {
-            Err(err) => Err(format!("expected number or ‘lossless’: {}", err)),
-            Ok(q) if 0.0 <= q && q <= 100.0 => Ok(Self(q)),
-            Ok(q) => Err(format!("expected number from 0 to 100; got {}", q)),
-        }
-    }
-}
-
-
 fn load(path: &std::path::PathBuf) -> Option<image::RgbImage> {
     match image::io::Reader::open(path) {
         Err(e) => {
