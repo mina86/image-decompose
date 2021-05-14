@@ -7,6 +7,8 @@
 
 use std::io::Write;
 
+use rayon::prelude::*;
+
 #[macro_use]
 mod cli;
 mod spaces;
@@ -80,30 +82,36 @@ fn process_file(
             return false;
         }
     };
+    eprintln!("Loading {}...", file.to_string_lossy());
     let img = if let Some(img) = load(file) {
         opts.resize_and_crop_image(img)
     } else {
         return false;
     };
-    let mut ok = true;
-    for space in spaces::SPACES.iter().copied() {
-        let out_file = output_file_name(space, out_dir.as_ref(), file_stem);
-        if !confirmer.confirm(&out_file) {
-            continue;
-        }
-        eprintln!("Generating {}...", out_file.to_string_lossy());
-        let img = space.build_image(&img);
-        let enc = opts.encode(webp::Encoder::from_image(
-            &image::DynamicImage::ImageRgb8(img),
-        ));
-        if let Err(err) = std::fs::File::create(&out_file)
-            .and_then(|mut fd| fd.write_all(&enc))
-        {
-            perr!(out_file, err);
-            ok = false;
-        }
-    }
-    ok
+    let errors = spaces::SPACES
+        .par_iter()
+        .filter(|&space| {
+            let out_file =
+                output_file_name(*space, out_dir.as_ref(), file_stem);
+            if !confirmer.confirm(&out_file) {
+                return true;
+            }
+            eprintln!("Generating {}...", out_file.to_string_lossy());
+            let img = space.build_image(&img);
+            let enc = opts.encode(webp::Encoder::from_image(
+                &image::DynamicImage::ImageRgb8(img),
+            ));
+            if let Err(err) = std::fs::File::create(&out_file)
+                .and_then(|mut fd| fd.write_all(&enc))
+            {
+                perr!(out_file, err);
+                false
+            } else {
+                true
+            }
+        })
+        .count();
+    errors == 0
 }
 
 fn main() -> std::process::ExitCode {
@@ -117,7 +125,7 @@ fn main() -> std::process::ExitCode {
     let confirmer = cli::Confirmer::new(&opts);
     let errors = opts
         .files
-        .iter()
+        .par_iter()
         .filter(|file| !process_file(&opts, &confirmer, file))
         .count();
     if errors == 0 {
