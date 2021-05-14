@@ -1,8 +1,9 @@
 # image-decompose
 
 The tool decomposes an RGB image into it’s channels in different
-colour spaces.  RGB, HSL, HSV, HSW, L\*a\*b\*, LCh<sub>ab</sub>,
-L\*u\*v\* and LCH<sub>uv</sub> models are supported.
+colour spaces.  sRGB (including linear RGB), HSL, HSV, HBW, XYZ, xyY,
+L\*a\*b\*, LCh<sub>ab</sub>, L\*u\*v\* and LCH<sub>uv</sub> models are
+supported.
 
 For each of those the program will load input image as an sRGB image,
 convert it to given colour space and then create an image which

@@ -70,6 +70,71 @@ impl Space for RgbSpace {
 }
 
 
+struct LinearRgbSpace;
+
+impl Space for LinearRgbSpace {
+    fn get_file_suffix(&self) -> &[u8] { b"lin-rgb" }
+
+    fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
+        let [r, g, b] = srgb::gamma::linear_from_u8(rgb.0);
+        (r * 255.0 + 0.5, g * 255.0 + 0.5, b * 255.0 + 0.5)
+    }
+
+    fn rgb_from_fst(&self, value: f32) -> Rgb { Rgb::from([value as u8, 0, 0]) }
+    fn rgb_from_snd(&self, value: f32) -> Rgb { Rgb::from([0, value as u8, 0]) }
+    fn rgb_from_trd(&self, value: f32) -> Rgb { Rgb::from([0, 0, value as u8]) }
+}
+
+
+fn grey(value: f32) -> Rgb {
+    let value = value as u8;
+    Rgb::from([value, value, value])
+}
+
+struct XYZSpace;
+
+impl Space for XYZSpace {
+    fn get_file_suffix(&self) -> &[u8] { b"XYZ" }
+
+    fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
+        let [x, y, z] = srgb::xyz_from_u8(rgb.0);
+        (
+            srgb::gamma::compress_u8(x / srgb::xyz::D65_XYZ[0]) as f32,
+            srgb::gamma::compress_u8(y) as f32,
+            srgb::gamma::compress_u8(z / srgb::xyz::D65_XYZ[1]) as f32,
+        )
+    }
+
+    fn rgb_from_fst(&self, value: f32) -> Rgb { grey(value) }
+    fn rgb_from_snd(&self, value: f32) -> Rgb { grey(value) }
+    fn rgb_from_trd(&self, value: f32) -> Rgb { grey(value) }
+}
+
+
+struct XYYSpace;
+
+impl Space for XYYSpace {
+    fn get_file_suffix(&self) -> &[u8] { b"xyY" }
+
+    fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
+        let [x, y, z] = srgb::xyz_from_u8(rgb.0);
+        let sum = x + y + z;
+        fn map(v: f32, min: f32, max: f32) -> f32 {
+            ((v - min) * 255.0 / (max - min) + 0.5).clamp(0.0, 255.0)
+        }
+        (
+            map(x / sum, 0.14999999, 0.64000005),
+            map(y / sum, 0.05999999, 0.6),
+            srgb::gamma::compress_u8(y) as f32,
+        )
+    }
+
+    fn rgb_from_fst(&self, value: f32) -> Rgb { grey(value) }
+    fn rgb_from_snd(&self, value: f32) -> Rgb { grey(value) }
+    fn rgb_from_trd(&self, value: f32) -> Rgb { grey(value) }
+}
+
+
 fn hs_common_from_rgb(rgb: Rgb) -> (f32, i32, i32, i32, i32) {
     let r = rgb.0[0] as i32;
     let g = rgb.0[1] as i32;
@@ -365,8 +430,11 @@ impl Space for LChuvSpace {
 }
 
 
-pub static SPACES: [&dyn Space; 8] = [
+pub static SPACES: [&dyn Space; 11] = [
     &RgbSpace,
+    &LinearRgbSpace,
+    &XYZSpace,
+    &XYYSpace,
     &HslSpace,
     &HsvSpace,
     &HwbSpace,
