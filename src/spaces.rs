@@ -1,7 +1,7 @@
 use image::GenericImage;
 use image::RgbImage as Image;
 
-type Rgb = image::Rgb<u8>;
+type Rgb = [u8; 3];
 type Tripple = (f32, f32, f32);
 
 
@@ -15,7 +15,7 @@ fn paste_from_fn<Encode: Fn(Tripple) -> Rgb>(
     let mut it = buf.iter();
     for y in 0..out.height() {
         for x in left..(left + width) {
-            out.put_pixel(x, y, encode(*it.next().unwrap()));
+            out.put_pixel(x, y, image::Rgb::from(encode(*it.next().unwrap())));
         }
     }
 }
@@ -31,7 +31,7 @@ pub trait Space: Sync {
 
     fn decompose_image(&self, img: &Image) -> Vec<Tripple> {
         img.pixels()
-            .map(|rgb: &Rgb| self.tripple_from_rgb(*rgb))
+            .map(|rgb| self.tripple_from_rgb(rgb.0))
             .collect::<Vec<_>>()
     }
 
@@ -60,13 +60,13 @@ impl Space for RgbSpace {
     fn get_file_suffix(&self) -> &str { "rgb" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let [r, g, b] = rgb.0;
+        let [r, g, b] = rgb;
         (r as f32, g as f32, b as f32)
     }
 
-    fn rgb_from_fst(&self, value: f32) -> Rgb { Rgb::from([value as u8, 0, 0]) }
-    fn rgb_from_snd(&self, value: f32) -> Rgb { Rgb::from([0, value as u8, 0]) }
-    fn rgb_from_trd(&self, value: f32) -> Rgb { Rgb::from([0, 0, value as u8]) }
+    fn rgb_from_fst(&self, value: f32) -> Rgb { [value as u8, 0, 0] }
+    fn rgb_from_snd(&self, value: f32) -> Rgb { [0, value as u8, 0] }
+    fn rgb_from_trd(&self, value: f32) -> Rgb { [0, 0, value as u8] }
 }
 
 
@@ -76,19 +76,19 @@ impl Space for LinearRgbSpace {
     fn get_file_suffix(&self) -> &str { "lin-rgb" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let [r, g, b] = srgb::gamma::linear_from_u8(rgb.0);
+        let [r, g, b] = srgb::gamma::linear_from_u8(rgb);
         (r * 255.0 + 0.5, g * 255.0 + 0.5, b * 255.0 + 0.5)
     }
 
-    fn rgb_from_fst(&self, value: f32) -> Rgb { Rgb::from([value as u8, 0, 0]) }
-    fn rgb_from_snd(&self, value: f32) -> Rgb { Rgb::from([0, value as u8, 0]) }
-    fn rgb_from_trd(&self, value: f32) -> Rgb { Rgb::from([0, 0, value as u8]) }
+    fn rgb_from_fst(&self, value: f32) -> Rgb { [value as u8, 0, 0] }
+    fn rgb_from_snd(&self, value: f32) -> Rgb { [0, value as u8, 0] }
+    fn rgb_from_trd(&self, value: f32) -> Rgb { [0, 0, value as u8] }
 }
 
 
 fn grey(value: f32) -> Rgb {
     let value = value as u8;
-    Rgb::from([value, value, value])
+    [value, value, value]
 }
 
 struct XYZSpace;
@@ -97,7 +97,7 @@ impl Space for XYZSpace {
     fn get_file_suffix(&self) -> &str { "XYZ" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let [x, y, z] = srgb::xyz_from_u8(rgb.0);
+        let [x, y, z] = srgb::xyz_from_u8(rgb);
         (
             srgb::gamma::compress_u8(x / srgb::xyz::D65_XYZ[0]) as f32,
             srgb::gamma::compress_u8(y) as f32,
@@ -117,14 +117,14 @@ fn rgb_from_xyy(lc_x: f32, lc_y: f32) -> Rgb {
     let x = lc_x * 0.5 / lc_y;
     let y = 0.5;
     let z = (1.0 - lc_x - lc_y) * 0.5 / lc_y;
-    Rgb::from(srgb::u8_from_xyz([x, y, z]))
+    srgb::u8_from_xyz([x, y, z])
 }
 
 impl Space for XYYSpace {
     fn get_file_suffix(&self) -> &str { "xyY" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let [x, y, z] = srgb::xyz_from_u8(rgb.0);
+        let [x, y, z] = srgb::xyz_from_u8(rgb);
         let sum = x + y + z;
         (x / sum, y / sum, srgb::gamma::compress_u8(y) as f32)
     }
@@ -140,9 +140,9 @@ impl Space for XYYSpace {
 
 
 fn hs_common_from_rgb(rgb: Rgb) -> (f32, i32, i32, i32, i32) {
-    let r = rgb.0[0] as i32;
-    let g = rgb.0[1] as i32;
-    let b = rgb.0[2] as i32;
+    let r = rgb[0] as i32;
+    let g = rgb[1] as i32;
+    let b = rgb[2] as i32;
 
     let min = std::cmp::min(std::cmp::min(r, g), b);
     let max = std::cmp::max(std::cmp::max(r, g), b);
@@ -164,7 +164,7 @@ fn hs_common_from_rgb(rgb: Rgb) -> (f32, i32, i32, i32, i32) {
 
 fn hs_common_hue_to_rgb(hue: f32) -> Rgb {
     if hue != hue {
-        Rgb::from([0, 0, 0])
+        [0, 0, 0]
     } else {
         let x = 0.5 - 0.5 * (hue % 2.0 - 1.0).abs();
         let (r, g, b) = match hue as u8 {
@@ -177,7 +177,7 @@ fn hs_common_hue_to_rgb(hue: f32) -> Rgb {
             _ => unreachable!(),
         };
         fn map(v: f32) -> u8 { (v * 255.0 + 64.25) as u8 }
-        Rgb::from([map(r), map(g), map(b)])
+        [map(r), map(g), map(b)]
     }
 }
 
@@ -202,11 +202,11 @@ impl Space for HslSpace {
     fn rgb_from_fst(&self, value: f32) -> Rgb { hs_common_hue_to_rgb(value) }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
         let v = (value * 255.0) as u8;
-        Rgb::from([v, v, v])
+        [v, v, v]
     }
     fn rgb_from_trd(&self, value: f32) -> Rgb {
         let v = value as u8;
-        Rgb::from([v, v, v])
+        [v, v, v]
     }
 }
 
@@ -231,11 +231,11 @@ impl Space for HsvSpace {
     fn rgb_from_fst(&self, value: f32) -> Rgb { hs_common_hue_to_rgb(value) }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
         let v = (value * 255.0) as u8;
-        Rgb::from([v, v, v])
+        [v, v, v]
     }
     fn rgb_from_trd(&self, value: f32) -> Rgb {
         let v = value as u8;
-        Rgb::from([v, v, v])
+        [v, v, v]
     }
 }
 
@@ -253,11 +253,11 @@ impl Space for HwbSpace {
     fn rgb_from_fst(&self, value: f32) -> Rgb { hs_common_hue_to_rgb(value) }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
         let v = value as u8;
-        Rgb::from([v, v, v])
+        [v, v, v]
     }
     fn rgb_from_trd(&self, value: f32) -> Rgb {
         let v = value as u8;
-        Rgb::from([v, v, v])
+        [v, v, v]
     }
 }
 
@@ -268,39 +268,33 @@ impl Space for LabSpace {
     fn get_file_suffix(&self) -> &str { "lab" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let lab = lab::Lab::from_rgb(&rgb.0);
+        let lab = lab::Lab::from_rgb(&rgb);
         (lab.l, lab.a, lab.b)
     }
 
     fn rgb_from_fst(&self, value: f32) -> Rgb {
-        Rgb::from(
-            lab::Lab {
-                l: value,
-                a: 0.0,
-                b: 0.0,
-            }
-            .to_rgb(),
-        )
+        lab::Lab {
+            l: value,
+            a: 0.0,
+            b: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            lab::Lab {
-                l: 30.0,
-                a: value,
-                b: 0.0,
-            }
-            .to_rgb(),
-        )
+        lab::Lab {
+            l: 30.0,
+            a: value,
+            b: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_trd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            lab::Lab {
-                l: 30.0,
-                a: 0.0,
-                b: value,
-            }
-            .to_rgb(),
-        )
+        lab::Lab {
+            l: 30.0,
+            a: 0.0,
+            b: value,
+        }
+        .to_rgb()
     }
 }
 
@@ -311,39 +305,33 @@ impl Space for LChabSpace {
     fn get_file_suffix(&self) -> &str { "lchab" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let lch = lab::LCh::from_rgb(&rgb.0);
+        let lch = lab::LCh::from_rgb(&rgb);
         (lch.l, lch.c, lch.h)
     }
 
     fn rgb_from_fst(&self, value: f32) -> Rgb {
-        Rgb::from(
-            lab::LCh {
-                l: value,
-                c: 0.0,
-                h: 0.0,
-            }
-            .to_rgb(),
-        )
+        lab::LCh {
+            l: value,
+            c: 0.0,
+            h: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            lab::LCh {
-                l: value / 1.338088,
-                c: 0.0,
-                h: 0.0,
-            }
-            .to_rgb(),
-        )
+        lab::LCh {
+            l: value / 1.338088,
+            c: 0.0,
+            h: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_trd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            lab::LCh {
-                l: 50.0,
-                c: 133.8088 * 0.5,
-                h: value,
-            }
-            .to_rgb(),
-        )
+        lab::LCh {
+            l: 50.0,
+            c: 133.8088 * 0.5,
+            h: value,
+        }
+        .to_rgb()
     }
 }
 
@@ -354,39 +342,33 @@ impl Space for LuvSpace {
     fn get_file_suffix(&self) -> &str { "luv" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let luv = luv::Luv::from_rgb(&rgb.0);
+        let luv = luv::Luv::from_rgb(&rgb);
         (luv.l, luv.u, luv.v)
     }
 
     fn rgb_from_fst(&self, value: f32) -> Rgb {
-        Rgb::from(
-            luv::Luv {
-                l: value,
-                u: 0.0,
-                v: 0.0,
-            }
-            .to_rgb(),
-        )
+        luv::Luv {
+            l: value,
+            u: 0.0,
+            v: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            luv::Luv {
-                l: 30.0,
-                u: value,
-                v: 0.0,
-            }
-            .to_rgb(),
-        )
+        luv::Luv {
+            l: 30.0,
+            u: value,
+            v: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_trd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            luv::Luv {
-                l: 30.0,
-                u: 0.0,
-                v: value,
-            }
-            .to_rgb(),
-        )
+        luv::Luv {
+            l: 30.0,
+            u: 0.0,
+            v: value,
+        }
+        .to_rgb()
     }
 }
 
@@ -397,39 +379,33 @@ impl Space for LChuvSpace {
     fn get_file_suffix(&self) -> &str { "lchuv" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
-        let lch = luv::LCh::from_rgb(&rgb.0);
+        let lch = luv::LCh::from_rgb(&rgb);
         (lch.l, lch.c, lch.h)
     }
 
     fn rgb_from_fst(&self, value: f32) -> Rgb {
-        Rgb::from(
-            luv::LCh {
-                l: value,
-                c: 0.0,
-                h: 0.0,
-            }
-            .to_rgb(),
-        )
+        luv::LCh {
+            l: value,
+            c: 0.0,
+            h: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_snd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            luv::LCh {
-                l: value / 1.790383,
-                c: 0.0,
-                h: 0.0,
-            }
-            .to_rgb(),
-        )
+        luv::LCh {
+            l: value / 1.790383,
+            c: 0.0,
+            h: 0.0,
+        }
+        .to_rgb()
     }
     fn rgb_from_trd(&self, value: f32) -> Rgb {
-        Rgb::from(
-            luv::LCh {
-                l: 50.0,
-                c: 179.0383 * 0.5,
-                h: value,
-            }
-            .to_rgb(),
-        )
+        luv::LCh {
+            l: 50.0,
+            c: 179.0383 * 0.5,
+            h: value,
+        }
+        .to_rgb()
     }
 }
 
