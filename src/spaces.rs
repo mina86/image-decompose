@@ -106,7 +106,10 @@ fn xyy_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
 }
 
 
-fn hs_common_from_rgb(rgb: Rgb) -> (f32, u8, u8, i32, i32) {
+fn hs_common_from_rgb(
+    hue_channel: &mut UnRgb,
+    rgb: [u8; 3],
+) -> (u8, u8, i32, i32) {
     let r = rgb[0];
     let g = rgb[1];
     let b = rgb[2];
@@ -126,11 +129,7 @@ fn hs_common_from_rgb(rgb: Rgb) -> (f32, u8, u8, i32, i32) {
         (r as i32 - g as i32) as f32 / range as f32 + 4.0
     };
 
-    (hue, min, max, sum, range)
-}
-
-fn hs_common_hue_to_rgb(hue: f32) -> Rgb {
-    if hue != hue {
+    hue_channel.set_rgb(if hue != hue {
         [0, 0, 0]
     } else {
         let x = 0.5 - 0.5 * (hue % 2.0 - 1.0).abs();
@@ -145,11 +144,13 @@ fn hs_common_hue_to_rgb(hue: f32) -> Rgb {
         };
         fn map(v: f32) -> u8 { mul_add(v, 255.0, 64.25) as u8 }
         [map(r), map(g), map(b)]
-    }
+    });
+
+    (min, max, sum, range)
 }
 
 fn hsl_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
-    let (hue, _min, _max, sum, range) = hs_common_from_rgb(rgb);
+    let (_min, _max, sum, range) = hs_common_from_rgb(channels[0], rgb);
 
     let saturation = if range == 0 || range == 255 {
         0.0
@@ -157,13 +158,12 @@ fn hsl_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
         range as f32 / (255 - (sum - 255).abs()) as f32
     };
 
-    channels[0].set_rgb(hs_common_hue_to_rgb(hue));
     channels[1].set_grey(round_u8(saturation) as u8);
     channels[2].set_grey((sum / 2) as u8);
 }
 
 fn hsv_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
-    let (hue, _min, max, _sum, range) = hs_common_from_rgb(rgb);
+    let (_min, max, _sum, range) = hs_common_from_rgb(channels[0], rgb);
 
     let saturation = if max == 0 {
         0.0
@@ -171,18 +171,15 @@ fn hsv_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
         range as f32 / max as f32
     };
 
-    channels[0].set_rgb(hs_common_hue_to_rgb(hue));
     channels[1].set_grey(round_u8(saturation) as u8);
     channels[2].set_grey(max);
 }
 
 fn hwb_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
-    let (hue, min, max, _sum, _range) = hs_common_from_rgb(rgb);
-    channels[0].set_rgb(hs_common_hue_to_rgb(hue));
+    let (min, max, _sum, _range) = hs_common_from_rgb(channels[0], rgb);
     channels[1].set_grey(min);
     channels[2].set_grey(255 - max);
 }
-
 
 
 fn lab_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
