@@ -48,12 +48,12 @@ fn output_directory<'a>(
 
 
 fn output_file_name(
-    space: &dyn spaces::Space,
+    space: &spaces::Space,
     out_dir: &std::path::Path,
     file_stem: &std::ffi::OsStr,
 ) -> std::path::PathBuf {
     let bytes = std::os::unix::ffi::OsStrExt::as_bytes(file_stem);
-    let suffix = space.get_file_suffix();
+    let suffix = space.name;
     let mut buf = Vec::<u8>::with_capacity(bytes.len() + suffix.len() + 6);
     buf.extend_from_slice(bytes);
     buf.push(b'-');
@@ -100,7 +100,7 @@ fn process_file(
                 return true;
             }
             eprintln!("Generating {}...", out_file.to_string_lossy());
-            let (width, height, img) = space.0.build_image(&img);
+            let (width, height, img) = spaces::build_image(space.0, &img);
             let enc =
                 opts.encode(webp::Encoder::from_rgb(&img[..], width, height));
             if let Err(err) = std::fs::File::create(&out_file)
@@ -125,10 +125,10 @@ fn main() -> std::process::ExitCode {
         }
     }
     if opts.spaces.is_empty() {
-        opts.spaces
-            .extend(spaces::SPACES.iter().map(|&sp| cli::SpaceArg(sp)));
+        opts.spaces.extend(spaces::SPACES.iter().map(cli::SpaceArg));
     } else {
-        opts.spaces.sort_by_key(|space| space.0.get_file_suffix());
+        opts.spaces
+            .sort_by_key(|space| space.0 as *const _ as usize);
         opts.spaces.dedup_by_key(|space| space.0 as *const _);
     }
     let opts = opts;

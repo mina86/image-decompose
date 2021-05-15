@@ -194,21 +194,21 @@ fn test_crop_from_str() {
 }
 
 
-pub struct SpaceArg(pub &'static dyn super::spaces::Space);
+pub struct SpaceArg(pub &'static super::spaces::Space);
 
 impl std::str::FromStr for SpaceArg {
     type Err = std::string::String;
 
     fn from_str(arg: &str) -> Result<Self, Self::Err> {
-        if let Some(&space) = super::spaces::SPACES
+        if let Some(space) = super::spaces::SPACES
             .iter()
-            .find(|&space| arg.eq_ignore_ascii_case(space.get_file_suffix()))
+            .find(|&space| arg.eq_ignore_ascii_case(space.name))
         {
             Ok(SpaceArg(space))
         } else {
             let spaces = super::spaces::SPACES
                 .iter()
-                .map(|space| space.get_file_suffix())
+                .map(|space| space.name)
                 .collect::<Vec<&'static str>>()
                 .join(", ");
             Err(["supported colour spaces: ", &spaces].concat())
