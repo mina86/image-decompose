@@ -65,7 +65,7 @@ pub fn build_image(space: &Space, src_image: &Image) -> (u32, u32, Box<[u8]>) {
 
     // SAFETY: All data has been initialised.
     let buffer = unsafe { buffer.assume_init() };
-    (width * (CHANNELS as u32 + 1), height, buffer)
+    (width * (space.channels as u32 + 1), height, buffer)
 }
 
 
@@ -81,6 +81,7 @@ fn lin_rgb_fill_channels(mut channels: Channels, rgb: Rgb) {
     channels.set_rgb(1, [0, round_u8(g) as u8, 0]);
     channels.set_rgb(2, [0, 0, round_u8(b) as u8]);
 }
+
 
 fn xyz_fill_channels(mut channels: Channels, rgb: Rgb) {
     let [x, y, z] = srgb::xyz_from_u8(rgb);
@@ -205,8 +206,6 @@ fn lchab_fill_channels(mut channels: Channels, rgb: Rgb) {
     set(&mut channels, 2, 50.0, 133.8088 * 0.5, lch.h);
 }
 
-
-
 fn luv_fill_channels(mut channels: Channels, rgb: Rgb) {
     fn set(channels: &mut Channels, channel: usize, l: f32, u: f32, v: f32) {
         channels.set_rgb(channel, luv::Luv { l, u, v }.to_rgb());
@@ -228,8 +227,28 @@ fn lchuv_fill_channels(mut channels: Channels, rgb: Rgb) {
 }
 
 
+fn cmy_fill_channels(mut channels: Channels, rgb: Rgb) {
+    let [r, g, b] = rgb;
+    channels.set_rgb(0, [0, 255 - r, 255 - r]);
+    channels.set_rgb(1, [255 - g, 0, 255 - g]);
+    channels.set_rgb(2, [255 - b, 255 - b, 0]);
+}
+
+fn cmyk_fill_channels(mut channels: Channels, rgb: Rgb) {
+    let [r, g, b] = rgb;
+    let max = std::cmp::max(std::cmp::max(r, g), b);
+    let c = round_u8(1.0 - r as f32 / max as f32);
+    let m = round_u8(1.0 - g as f32 / max as f32);
+    let y = round_u8(1.0 - b as f32 / max as f32);
+    channels.set_rgb(0, [0, c, c]);
+    channels.set_rgb(1, [m, 0, m]);
+    channels.set_rgb(2, [y, y, 0]);
+    channels.set_grey(3, 255 - max);
+}
+
+
 #[rustfmt::skip]
-pub static SPACES: [Space; 11] = [
+pub static SPACES: [Space; 13] = [
     Space { name: "rgb",     channels: 3, fill_channels: rgb_fill_channels},
     Space { name: "lin-rgb", channels: 3, fill_channels: lin_rgb_fill_channels},
     Space { name: "XYZ",     channels: 3, fill_channels: xyz_fill_channels},
@@ -241,4 +260,6 @@ pub static SPACES: [Space; 11] = [
     Space { name: "lchab",   channels: 3, fill_channels: lchab_fill_channels},
     Space { name: "luv",     channels: 3, fill_channels: luv_fill_channels},
     Space { name: "lchuv",   channels: 3, fill_channels: lchuv_fill_channels},
+    Space { name: "cmy",     channels: 3, fill_channels: cmy_fill_channels},
+    Space { name: "cmyk",    channels: 4, fill_channels: cmyk_fill_channels},
 ];
