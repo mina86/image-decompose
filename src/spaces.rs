@@ -113,24 +113,28 @@ impl Space for XYZSpace {
 
 struct XYYSpace;
 
+fn rgb_from_xyy(lc_x: f32, lc_y: f32) -> Rgb {
+    let x = lc_x * 0.5 / lc_y;
+    let y = 0.5;
+    let z = (1.0 - lc_x - lc_y) * 0.5 / lc_y;
+    Rgb::from(srgb::u8_from_xyz([x, y, z]))
+}
+
 impl Space for XYYSpace {
     fn get_file_suffix(&self) -> &str { "xyY" }
 
     fn tripple_from_rgb(&self, rgb: Rgb) -> Tripple {
         let [x, y, z] = srgb::xyz_from_u8(rgb.0);
         let sum = x + y + z;
-        fn map(v: f32, min: f32, max: f32) -> f32 {
-            ((v - min) * 255.0 / (max - min) + 0.5).clamp(0.0, 255.0)
-        }
-        (
-            map(x / sum, 0.14999999, 0.64000005),
-            map(y / sum, 0.05999999, 0.6),
-            srgb::gamma::compress_u8(y) as f32,
-        )
+        (x / sum, y / sum, srgb::gamma::compress_u8(y) as f32)
     }
 
-    fn rgb_from_fst(&self, value: f32) -> Rgb { grey(value) }
-    fn rgb_from_snd(&self, value: f32) -> Rgb { grey(value) }
+    fn rgb_from_fst(&self, value: f32) -> Rgb {
+        rgb_from_xyy(value, srgb::xyz::D65_xyY[1])
+    }
+    fn rgb_from_snd(&self, value: f32) -> Rgb {
+        rgb_from_xyy(srgb::xyz::D65_xyY[0], value)
+    }
     fn rgb_from_trd(&self, value: f32) -> Rgb { grey(value) }
 }
 
