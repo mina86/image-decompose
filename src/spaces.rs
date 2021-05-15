@@ -1,22 +1,18 @@
-use image::GenericImage;
 use image::RgbImage as Image;
 
 type Rgb = [u8; 3];
+type UnRgb = [std::mem::MaybeUninit<u8>; 3];
 type Tripple = (f32, f32, f32);
 
 
-fn paste_from_fn<Encode: Fn(Tripple) -> Rgb>(
-    out: &mut Image,
-    left: u32,
-    width: u32,
-    buf: &Vec<Tripple>,
-    encode: Encode,
-) {
-    let mut it = buf.iter();
-    for y in 0..out.height() {
-        for x in left..(left + width) {
-            out.put_pixel(x, y, image::Rgb::from(encode(*it.next().unwrap())));
-        }
+trait Pixel {
+    fn set_rgb(&mut self, rgb: Rgb);
+    fn set_grey(&mut self, value: u8) { self.set_rgb([value, value, value]); }
+}
+
+impl Pixel for UnRgb {
+    fn set_rgb(&mut self, rgb: Rgb) {
+        std::mem::MaybeUninit::write_slice(self, &rgb);
     }
 }
 
@@ -29,27 +25,42 @@ pub trait Space: Sync {
     fn rgb_from_snd(&self, value: f32) -> Rgb;
     fn rgb_from_trd(&self, value: f32) -> Rgb;
 
-    fn decompose_image(&self, img: &Image) -> Vec<Tripple> {
-        img.pixels()
-            .map(|rgb| self.tripple_from_rgb(rgb.0))
-            .collect::<Vec<_>>()
-    }
+    fn build_image(&self, src_image: &Image) -> (u32, u32, Box<[u8]>) {
+        const CHANNELS: usize = 3;
 
-    fn build_image(&self, src: &Image) -> Image {
-        let (width, height) = src.dimensions();
-        let buf = self.decompose_image(src);
-        let mut dst = Image::new(width * 4, height);
-        dst.copy_from(&*src, 0, 0).unwrap();
-        paste_from_fn(&mut dst, width, width, &buf, |colour: Tripple| {
-            self.rgb_from_fst(colour.0)
-        });
-        paste_from_fn(&mut dst, width * 2, width, &buf, |colour: Tripple| {
-            self.rgb_from_snd(colour.1)
-        });
-        paste_from_fn(&mut dst, width * 3, width, &buf, |colour: Tripple| {
-            self.rgb_from_trd(colour.2)
-        });
-        dst
+        let (width, height) = src_image.dimensions();
+        let size = width as usize * (CHANNELS + 1) * height as usize * 3;
+        let mut buffer = Box::<[u8]>::new_uninit_slice(size);
+        let dst_rows = buffer
+            .as_chunks_mut::<3>()
+            .0
+            .chunks_exact_mut(width as usize * (CHANNELS + 1));
+        let src_rows = src_image
+            .as_raw()
+            .as_slice()
+            .as_chunks::<3>()
+            .0
+            .chunks_exact(width as usize);
+
+        for (src_row, dst_row) in src_rows.zip(dst_rows) {
+            let (cpy_row, rest) = dst_row.split_at_mut(width as usize);
+            // SAFETY: &[T; N] and &[MaybeUninit<T>; N] have the same layout.
+            cpy_row.copy_from_slice(unsafe { std::mem::transmute(src_row) });
+
+            let (fst_row, rest) = rest.split_at_mut(width as usize);
+            let (snd_row, trd_row) = rest.split_at_mut(width as usize);
+            for (src, fst, snd, trd) in
+                itertools::izip!(src_row, fst_row, snd_row, trd_row)
+            {
+                let tripple = self.tripple_from_rgb(*src);
+                fst.set_rgb(self.rgb_from_fst(tripple.0));
+                snd.set_rgb(self.rgb_from_snd(tripple.1));
+                trd.set_rgb(self.rgb_from_trd(tripple.2));
+            }
+        }
+
+        let buffer = unsafe { buffer.assume_init() };
+        (width * (CHANNELS as u32 + 1), height, buffer)
     }
 }
 

@@ -2,6 +2,8 @@
     maybe_uninit_write_slice,
     process_exitcode_placeholder,
     result_into_ok_or_err,
+    slice_as_chunks,
+    new_uninit,
     vec_into_raw_parts
 )]
 
@@ -98,10 +100,9 @@ fn process_file(
                 return true;
             }
             eprintln!("Generating {}...", out_file.to_string_lossy());
-            let img = space.0.build_image(&img);
-            let enc = opts.encode(webp::Encoder::from_image(
-                &image::DynamicImage::ImageRgb8(img),
-            ));
+            let (width, height, img) = space.0.build_image(&img);
+            let enc =
+                opts.encode(webp::Encoder::from_rgb(&img[..], width, height));
             if let Err(err) = std::fs::File::create(&out_file)
                 .and_then(|mut fd| fd.write_all(&enc))
             {
