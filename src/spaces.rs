@@ -186,119 +186,46 @@ fn hwb_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
 
 
 fn lab_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
+    fn set(pixel: &mut UnRgb, l: f32, a: f32, b: f32) {
+        pixel.set_rgb(lab::Lab { l, a, b }.to_rgb());
+    }
     let lab = lab::Lab::from_rgb(&rgb);
-    channels[0].set_rgb(
-        lab::Lab {
-            l: lab.l,
-            a: 0.0,
-            b: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[1].set_rgb(
-        lab::Lab {
-            l: 30.0,
-            a: lab.a,
-            b: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[2].set_rgb(
-        lab::Lab {
-            l: 30.0,
-            a: 0.0,
-            b: lab.b,
-        }
-        .to_rgb(),
-    );
+    set(channels[0], lab.l, 0.0, 0.0);
+    set(channels[1], 30.0, lab.a, 0.0);
+    set(channels[2], 30.0, 0.0, lab.b);
 }
 
 fn lchab_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
+    fn set(pixel: &mut UnRgb, l: f32, c: f32, h: f32) {
+        pixel.set_rgb(lab::LCh { l, c, h }.to_rgb());
+    }
     let lch = lab::LCh::from_rgb(&rgb);
-    channels[0].set_rgb(
-        lab::LCh {
-            l: lch.l,
-            c: 0.0,
-            h: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[1].set_rgb(
-        lab::LCh {
-            l: lch.c / 1.338088,
-            c: 0.0,
-            h: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[2].set_rgb(
-        lab::LCh {
-            l: 50.0,
-            c: 133.8088 * 0.5,
-            h: lch.h,
-        }
-        .to_rgb(),
-    );
+    set(channels[0], lch.l, 0.0, 0.0);
+    set(channels[1], lch.c / 1.338088, 0.0, 0.0);
+    set(channels[2], 50.0, 133.8088 * 0.5, lch.h);
 }
 
 
 
 fn luv_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
+    fn set(pixel: &mut UnRgb, l: f32, u: f32, v: f32) {
+        pixel.set_rgb(luv::Luv { l, u, v }.to_rgb());
+    }
     let luv = luv::Luv::from_rgb(&rgb);
-    channels[0].set_rgb(
-        luv::Luv {
-            l: luv.l,
-            u: 0.0,
-            v: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[1].set_rgb(
-        luv::Luv {
-            l: 30.0,
-            u: luv.u,
-            v: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[2].set_rgb(
-        luv::Luv {
-            l: 30.0,
-            u: 0.0,
-            v: luv.v,
-        }
-        .to_rgb(),
-    );
+    set(channels[0], luv.l, 0.0, 0.0);
+    set(channels[1], 30.0, luv.u, 0.0);
+    set(channels[2], 30.0, 0.0, luv.v);
 }
 
 fn lchuv_fill_channels(channels: &mut [&mut UnRgb], rgb: Rgb) {
+    fn set(pixel: &mut UnRgb, l: f32, c: f32, h: f32) {
+        pixel.set_rgb(luv::LCh { l, c, h }.to_rgb());
+    }
     let lch = luv::LCh::from_rgb(&rgb);
-    channels[0].set_rgb(
-        luv::LCh {
-            l: lch.l,
-            c: 0.0,
-            h: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[1].set_rgb(
-        luv::LCh {
-            l: lch.c / 1.790383,
-            c: 0.0,
-            h: 0.0,
-        }
-        .to_rgb(),
-    );
-    channels[2].set_rgb(
-        luv::LCh {
-            l: 50.0,
-            c: 179.0383 * 0.5,
-            h: lch.h,
-        }
-        .to_rgb(),
-    );
+    set(channels[0], lch.l, 0.0, 0.0);
+    set(channels[1], lch.c / 1.790383, 0.0, 0.0);
+    set(channels[2], 50.0, 179.0383 * 0.5, lch.h);
 }
-
 
 
 #[rustfmt::skip]
