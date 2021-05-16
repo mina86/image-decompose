@@ -156,7 +156,7 @@ fn hs_common_from_rgb(
 fn hsl_fill_channels(mut channels: Channels, rgb: Rgb) {
     let (_min, _max, sum, range) = hs_common_from_rgb(&mut channels, rgb);
 
-    let saturation = if range == 0 || range == 255 {
+    let saturation = if range == 0 {
         0.0
     } else {
         range as f32 / (255 - (sum - 255).abs()) as f32
