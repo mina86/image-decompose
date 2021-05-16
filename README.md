@@ -14,19 +14,21 @@ includes coordinates
 An example image is included in `data` directory which can be used to
 test the program:
 
-    cargo run -- -y --resize 256x256 --crop 200x200+28+28 \
-                 -o out data/lenna.png
+    cargo run -- -y --resize 300x400 --crop 150x300+75+50 \
+                 -o out data/umbrella-sky.jpg
+
 
 As a result, the tool generates handful of WebP images and saves them
-in the `out` directory with names matching `lenna-*.webp` pattern.
-Each of the image includes decomposition of the source image into
-separate channels in given colour space.
+in the `out` directory with names matching `umbrella-sky-*.webp`
+pattern.  Each of the image includes decomposition of the source image
+into separate channels in given colour space.
 
 For example:
 
 ## sRGB
 
-![Decomposition of the Lenna test image into red, green and blue channels](out/lenna-rgb.webp)
+![An photo with its decomposition into red, green and blue
+channels](out/umbrella-sky-rgb.webp)
 
 Perhaps the most familiar decomposition showing how much red, green
 and blue is in each pixel of the image.  RGB model is additive thus
@@ -34,23 +36,23 @@ the result comes from adding all those colours.
 
 ## HSL
 
-![Decomposition of the Lenna test image into hue, saturaiton and
-lightens channels of HSL model](out/lenna-hsl.webp)
+![An photo with its decomposition into hue, saturaiton and lightens
+channels of HSL model](out/umbrella-sky-hsl.webp)
 
 HSL attempts to be more user friendly by introducing more natural hue,
 saturation and lightness controls.  The model isn’t perceptually
 uniform though so changing only hue affects luminosity of the colour.
 
-The image being quite uniform in hue of the colour leaves hue channel
-to have comparatively little variance leaving just the blue feather to
-pop.
+Black spots in the hue channel indicates grey colours (which includes
+white and black) in the source images for which hue is undefined.
 
 ## L\*u\*v\* and LCh<sub>uv</sub>
 
-![Decomposition of the Lenna test image into L\*, u\* and v\* channels](out/lenna-luv.webp)
+![An photo with its decomposition into L\*, u\* and v\*
+channels](out/umbrella-sky-luv.webp)
 
-![Decomposition of the Lenna test image into L\*, C\* and hue channels
-of LCh(uv) model](out/lenna-lchuv.webp)
+![An photo with its decomposition into L\*, C\* and hue channels of
+LCh(uv) model](out/umbrella-sky-lchuv.webp)
 
 L\*u\*v\* colour space tries to be perceptually uniform.  The
 decomposition demonstrates the L\* channel corresponds to luminosity
@@ -62,11 +64,11 @@ chromaticity with more familiar hue and chroma values.
 
 ## CMY and CMYK
 
-![Decomposition of the Lenna test image into cyan, magenta and yellow
-channels](out/lenna-cmy.webp)
+![An photo with its decomposition into cyan, magenta and yellow
+channels](out/umbrella-sky-cmy.webp)
 
-![Decomposition of the Lenna test image into cyan, magenta, yellow and
-black channels](out/lenna-cmyk.webp)
+![An photo with its decomposition into cyan, magenta, yellow and black
+channels](out/umbrella-sky-cmyk.webp)
 
 CMY and CMYK colour models are subtractive.  This is demonstrated by
 the channels being ‘inverses’ of the image.  The less cyan the image
