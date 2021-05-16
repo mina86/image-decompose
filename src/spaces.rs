@@ -37,20 +37,23 @@ pub struct Space {
 }
 
 
-pub fn build_image(space: &Space, src_image: &Image) -> (u32, u32, Box<[u8]>) {
+pub fn build_image(
+    space: &Space,
+    src_image: &Image,
+) -> Option<(u32, u32, Box<[u8]>)> {
     let (width, height) = src_image.dimensions();
-    let size = width as usize * (space.channels + 1) * height as usize * 3;
-    let mut buffer = Box::<[u8]>::new_uninit_slice(size);
-    let dst_rows = buffer
+    width.checked_mul(space.channels as u32 + 1)?;
+
+    let src_buffer = src_image.as_raw().as_slice();
+    let mut dst_buffer = Box::<[u8]>::new_uninit_slice(
+        src_buffer.len().checked_mul(space.channels + 1)?,
+    );
+
+    let dst_rows = dst_buffer
         .as_chunks_mut::<3>()
         .0
         .chunks_exact_mut(width as usize * (space.channels + 1));
-    let src_rows = src_image
-        .as_raw()
-        .as_slice()
-        .as_chunks::<3>()
-        .0
-        .chunks_exact(width as usize);
+    let src_rows = src_buffer.as_chunks::<3>().0.chunks_exact(width as usize);
 
     for (src_row, dst_row) in src_rows.zip(dst_rows) {
         let (cpy_row, dst_row) = dst_row.split_at_mut(width as usize);
@@ -64,8 +67,12 @@ pub fn build_image(space: &Space, src_image: &Image) -> (u32, u32, Box<[u8]>) {
     }
 
     // SAFETY: All data has been initialised.
-    let buffer = unsafe { buffer.assume_init() };
-    (width * (space.channels as u32 + 1), height, buffer)
+    let dst_buffer = unsafe { dst_buffer.assume_init() };
+    Some((
+        width.checked_mul(space.channels as u32 + 1)?,
+        height,
+        dst_buffer,
+    ))
 }
 
 

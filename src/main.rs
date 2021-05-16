@@ -98,7 +98,14 @@ fn process_file(
                 return true;
             }
             eprintln!("Generating {}...", out_file.to_string_lossy());
-            let (width, height, img) = spaces::build_image(space.0, &img);
+            let (width, height, img) =
+                if let Some(res) = spaces::build_image(space.0, &img) {
+                    res
+                } else {
+                    let (w, h) = img.dimensions();
+                    perr!(file, "image too large ({}x{})", w, h);
+                    return false;
+                };
             let enc =
                 opts.encode(webp::Encoder::from_rgb(&img[..], width, height));
             if let Err(err) = std::fs::File::create(&out_file)
