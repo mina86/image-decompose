@@ -14,7 +14,7 @@ includes coordinates
 An example image is included in `data` directory which can be used to
 test the program:
 
-    cargo run -- -f --resize 256x256 --crop 200x200+28+28 \
+    cargo run -- -y --resize 256x256 --crop 200x200+28+28 \
                  -o out data/lenna.png
 
 As a result, the tool generates handful of WebP images and saves them
