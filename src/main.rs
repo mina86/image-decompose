@@ -16,19 +16,17 @@ mod cli;
 mod spaces;
 
 
-fn load(path: &std::path::PathBuf) -> Option<image::RgbImage> {
-    match image::io::Reader::open(path) {
+fn load(path: &std::path::PathBuf) -> Option<image::DynamicImage> {
+    match image::io::Reader::open(path).map(|rd| rd.decode()) {
         Err(e) => {
             perr!(path, e);
             None
         }
-        Ok(rd) => match rd.decode() {
-            Err(e) => {
-                perr!(path, "error decoding: {}", e);
-                None
-            }
-            Ok(img) => Some(img.into_rgb8()),
-        },
+        Ok(Err(e)) => {
+            perr!(path, "error decoding: {}", e);
+            None
+        }
+        Ok(Ok(img)) => Some(img),
     }
 }
 
@@ -86,7 +84,7 @@ fn process_file(
     };
     eprintln!("Loading {}...", file.to_string_lossy());
     let img = if let Some(img) = load(file) {
-        opts.resize_and_crop_image(img)
+        opts.resize_and_crop_image(img).to_rgb8()
     } else {
         return false;
     };

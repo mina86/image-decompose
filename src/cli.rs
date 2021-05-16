@@ -2,6 +2,7 @@ use std::io::BufRead;
 use std::str::FromStr;
 
 use clap::Clap;
+use image::GenericImageView;
 
 
 #[macro_export]
@@ -307,19 +308,22 @@ impl Opts {
         }
     }
 
-    pub fn resize_image(&self, img: image::RgbImage) -> image::RgbImage {
+    pub fn resize_image(
+        &self,
+        img: image::DynamicImage,
+    ) -> image::DynamicImage {
         if let Some(Dimensions {
             width: w,
             height: h,
         }) = self.resize
         {
-            image::imageops::resize(&img, w, h, image::imageops::Lanczos3)
+            img.resize_exact(w, h, image::imageops::Lanczos3)
         } else {
             img
         }
     }
 
-    pub fn crop_image(&self, img: image::RgbImage) -> image::RgbImage {
+    pub fn crop_image(&self, img: image::DynamicImage) -> image::DynamicImage {
         if let Some(crop) = &self.crop {
             let (img_width, img_height) = img.dimensions();
             let width = crop.width.min(img_width);
@@ -339,13 +343,16 @@ impl Opts {
             } else {
                 img_height - height - y
             };
-            image::imageops::crop_imm(&img, x, y, width, height).to_image()
+            img.crop_imm(x, y, width, height)
         } else {
             img
         }
     }
 
-    pub fn resize_and_crop_image(&self, i: image::RgbImage) -> image::RgbImage {
+    pub fn resize_and_crop_image(
+        &self,
+        i: image::DynamicImage,
+    ) -> image::DynamicImage {
         self.crop_image(self.resize_image(i))
     }
 }
