@@ -71,10 +71,7 @@ channels](out/umbrella-sky-cmy.webp)
 channels](out/umbrella-sky-cmyk.webp)
 
 CMY and CMYK colour models are subtractive.  This is demonstrated by
-the channels being ‘inverses’ of the image.  The less cyan the image
-has, the higher value in the cyan channel.  Similarly for other
-channels.
-
-Addition of black channel means that the more black is used the less
-of all the other channels is used (which is useful in printing of
-course).
+the channels being ‘inverses’ of the image.  The less red the image
+has, the more cyan is used and the same for green-magenta and
+blue-yellow pairs.  The inverse is especially apparent with black (or
+key) channel in CMYK model.
