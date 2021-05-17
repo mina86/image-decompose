@@ -192,6 +192,9 @@ fn hwb_fill_channels(mut channels: Channels, rgb: Rgb) {
     channels.set_grey(2, 255 - max);
 }
 
+fn abuv_lstar(v: f32, min: f32, max: f32) -> f32 {
+    50.0 * (if v < 0.0 { v / min } else { v / max })
+}
 
 fn lab_fill_channels(mut channels: Channels, rgb: Rgb) {
     fn set(channels: &mut Channels, channel: usize, l: f32, a: f32, b: f32) {
@@ -199,8 +202,20 @@ fn lab_fill_channels(mut channels: Channels, rgb: Rgb) {
     }
     let lab = lab::Lab::from_rgb(&rgb);
     set(&mut channels, 0, lab.l, 0.0, 0.0);
-    set(&mut channels, 1, 30.0, lab.a, 0.0);
-    set(&mut channels, 2, 30.0, 0.0, lab.b);
+    set(
+        &mut channels,
+        1,
+        abuv_lstar(lab.a, -86.18078, 98.23698),
+        lab.a,
+        0.0,
+    );
+    set(
+        &mut channels,
+        2,
+        abuv_lstar(lab.b, -107.858345, 94.48001),
+        0.0,
+        lab.b,
+    );
 }
 
 fn lchab_fill_channels(mut channels: Channels, rgb: Rgb) {
@@ -219,8 +234,20 @@ fn luv_fill_channels(mut channels: Channels, rgb: Rgb) {
     }
     let luv = luv::Luv::from_rgb(&rgb);
     set(&mut channels, 0, luv.l, 0.0, 0.0);
-    set(&mut channels, 1, 30.0, luv.u, 0.0);
-    set(&mut channels, 2, 30.0, 0.0, luv.v);
+    set(
+        &mut channels,
+        1,
+        abuv_lstar(luv.u, -83.07059, 175.01141),
+        luv.u,
+        0.0,
+    );
+    set(
+        &mut channels,
+        2,
+        abuv_lstar(luv.v, -134.10574, 107.40619),
+        0.0,
+        luv.v,
+    );
 }
 
 fn lchuv_fill_channels(mut channels: Channels, rgb: Rgb) {
