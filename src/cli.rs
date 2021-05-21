@@ -299,6 +299,50 @@ pub struct Opts {
 }
 
 impl Opts {
+    pub fn confirm(&self, file: &std::path::Path) -> bool {
+        if self.yes || !file.exists() {
+            return true;
+        }
+        if self.interactive {
+            match self.confirm_impl(std::io::stdin().lock(), file) {
+                Ok(ans) => return ans,
+                Err((a, b)) => eprintln!("{}: {}", a, b),
+            }
+        }
+        super::perr!(file, "file already exists, skipping");
+        false
+    }
+
+    fn confirm_impl(
+        &self,
+        mut inp: std::io::StdinLock<'_>,
+        file: &std::path::Path,
+    ) -> std::result::Result<bool, (&'static str, std::io::Error)> {
+        let mut buf = Vec::<u8>::new();
+        loop {
+            if let Err(err) = write_prompt(std::io::stdout().lock(), file) {
+                break Err(("stdout", err));
+            }
+            buf.clear();
+            if let Err(err) = inp.read_until(b'\n', &mut buf) {
+                break Err(("stdin", err));
+            } else if buf.is_empty() {
+                println!("N");
+                break Ok(false);
+            }
+            while !buf.is_empty() &&
+                (buf[buf.len() - 1] == b'\n' || buf[buf.len() - 1] == b'\r')
+            {
+                buf.pop();
+            }
+            if buf == b"y" || buf == b"Y" {
+                break Ok(true);
+            } else if buf.is_empty() || buf == b"n" || buf == b"N" {
+                break Ok(false);
+            }
+        }
+    }
+
     pub fn encode(&self, enc: webp::Encoder) -> webp::WebPMemory {
         let q = self.quality.0;
         if self.lossless || q == f32::INFINITY {
@@ -357,49 +401,6 @@ impl Opts {
     }
 }
 
-
-pub enum Confirmer {
-    Skip,
-    Overwrite,
-    Interactive(std::sync::Mutex<ConfirmerInner>),
-}
-
-#[allow(private_in_public)]
-struct ConfirmerInner;
-
-impl Confirmer {
-    pub fn new(opts: &Opts) -> Self {
-        if opts.yes {
-            Self::Overwrite
-        } else if opts.interactive {
-            Self::Interactive(std::sync::Mutex::new(ConfirmerInner))
-        } else {
-            Self::Skip
-        }
-    }
-
-    pub fn confirm(&self, file: &std::path::Path) -> bool {
-        match self {
-            Self::Overwrite => return true,
-            _ if !file.exists() => return true,
-            Self::Skip => (),
-            Self::Interactive(mutex) => {
-                let res = mutex
-                    .lock()
-                    .map_err(|p| p.into_inner())
-                    .into_ok_or_err()
-                    .confirm(file);
-                match res {
-                    Ok(ans) => return ans,
-                    Err((a, b)) => eprintln!("{}: {}", a, b),
-                }
-            }
-        }
-        super::perr!(file, "file already exists, skipping");
-        false
-    }
-}
-
 fn write_prompt(
     mut out: impl std::io::Write,
     file: &std::path::Path,
@@ -407,37 +408,4 @@ fn write_prompt(
     out.write_all(std::os::unix::ffi::OsStrExt::as_bytes(file.as_os_str()))?;
     write!(out, ": file exists, overwrite? [y/N] ")?;
     out.flush()
-}
-
-impl ConfirmerInner {
-    fn confirm(
-        &self,
-        file: &std::path::Path,
-    ) -> std::result::Result<bool, (&'static str, std::io::Error)> {
-        let mut buf = Vec::<u8>::new();
-        loop {
-            if let Err(err) = write_prompt(std::io::stdout().lock(), file) {
-                break Err(("stdout", err));
-            }
-            buf.clear();
-            if let Err(err) =
-                std::io::stdin().lock().read_until(b'\n', &mut buf)
-            {
-                break Err(("stdin", err));
-            } else if buf.is_empty() {
-                println!("N");
-                break Ok(false);
-            }
-            while !buf.is_empty() &&
-                (buf[buf.len() - 1] == b'\n' || buf[buf.len() - 1] == b'\r')
-            {
-                buf.pop();
-            }
-            if buf == b"y" || buf == b"Y" {
-                break Ok(true);
-            } else if buf.is_empty() || buf == b"n" || buf == b"N" {
-                break Ok(false);
-            }
-        }
-    }
 }

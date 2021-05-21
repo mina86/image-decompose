@@ -63,11 +63,7 @@ fn output_file_name(
 }
 
 
-fn process_file(
-    opts: &cli::Opts,
-    confirmer: &cli::Confirmer,
-    file: &std::path::PathBuf,
-) -> bool {
+fn process_file(opts: &cli::Opts, file: &std::path::PathBuf) -> bool {
     let out_dir = match output_directory(&opts.out_dir, file) {
         Ok(dir) => dir,
         Err(err) => {
@@ -94,7 +90,7 @@ fn process_file(
         .filter(|space| {
             let out_file =
                 output_file_name(space.0, out_dir.as_ref(), file_stem);
-            if !confirmer.confirm(&out_file) {
+            if !opts.confirm(&out_file) {
                 return true;
             }
             eprintln!("Generating {}...", out_file.to_string_lossy());
@@ -144,11 +140,10 @@ fn main() -> std::process::ExitCode {
             .err()
             .map(|err| eprintln!("{}", err));
     }
-    let confirmer = cli::Confirmer::new(&opts);
     let errors = opts
         .files
         .par_iter()
-        .filter(|file| !process_file(&opts, &confirmer, file))
+        .filter(|file| !process_file(&opts, file))
         .count();
     if errors == 0 {
         std::process::ExitCode::SUCCESS
