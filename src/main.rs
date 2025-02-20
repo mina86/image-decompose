@@ -1,12 +1,3 @@
-#![feature(
-    maybe_uninit_write_slice,
-    process_exitcode_placeholder,
-    result_into_ok_or_err,
-    slice_as_chunks,
-    new_uninit,
-    vec_into_raw_parts
-)]
-
 use std::io::Write;
 
 use rayon::prelude::*;
@@ -17,7 +8,7 @@ mod spaces;
 
 
 fn load(path: &std::path::PathBuf) -> Option<image::DynamicImage> {
-    match image::io::Reader::open(path).map(|rd| rd.decode()) {
+    match image::ImageReader::open(path).map(|rd| rd.decode()) {
         Err(e) => {
             perr!(path, e);
             None
@@ -118,7 +109,7 @@ fn process_file(opts: &cli::Opts, file: &std::path::PathBuf) -> bool {
 }
 
 fn main() -> std::process::ExitCode {
-    let mut opts = <cli::Opts as clap::Clap>::parse();
+    let mut opts: cli::Opts = clap::Parser::parse();
     if let Some(dir) = &opts.out_dir {
         if let Err(err) = std::fs::create_dir_all(dir) {
             perr!(dir, err);

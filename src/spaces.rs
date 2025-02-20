@@ -11,7 +11,9 @@ impl Channels {
         // SAFETY: Caller guarantees that self.0 is a pointer to within a slice
         // such that all the indexes are valid.
         let pixel = unsafe { &mut *self.0.add(self.1 * channel) };
-        std::mem::MaybeUninit::write_slice(pixel, &rgb);
+        pixel[0].write(rgb[0]);
+        pixel[1].write(rgb[1]);
+        pixel[2].write(rgb[2]);
     }
     fn set_grey(&mut self, channel: usize, value: u8) {
         self.set_rgb(channel, [value, value, value]);
@@ -49,11 +51,9 @@ pub fn build_image(
         src_buffer.len().checked_mul(space.channels + 1)?,
     );
 
-    let dst_rows = dst_buffer
-        .as_chunks_mut::<3>()
-        .0
+    let dst_rows = as_chunks_mut::<3, _>(&mut dst_buffer)
         .chunks_exact_mut(width as usize * (space.channels + 1));
-    let src_rows = src_buffer.as_chunks::<3>().0.chunks_exact(width as usize);
+    let src_rows = as_chunks::<3, _>(src_buffer).chunks_exact(width as usize);
 
     for (src_row, dst_row) in src_rows.zip(dst_rows) {
         let (cpy_row, dst_row) = dst_row.split_at_mut(width as usize);
@@ -73,6 +73,23 @@ pub fn build_image(
         height,
         dst_buffer,
     ))
+}
+
+
+// TODO(mina86): Remove once [T].as_chunks stabilises.
+fn as_chunks<const N: usize, T>(slice: &[T]) -> &[[T; N]] {
+    let len = slice.len() / N;
+    let ptr = slice.as_ptr().cast();
+    // SAFETY: `len * N ≤ slice.len()`
+    unsafe { core::slice::from_raw_parts(ptr, len * N) }
+}
+
+// TODO(mina86): Remove once [T].as_chunks_mut stabilises.
+fn as_chunks_mut<const N: usize, T>(slice: &mut [T]) -> &mut [[T; N]] {
+    let len = slice.len() / N;
+    let ptr = slice.as_mut_ptr().cast();
+    // SAFETY: `len * N ≤ slice.len()`
+    unsafe { core::slice::from_raw_parts_mut(ptr, len * N) }
 }
 
 

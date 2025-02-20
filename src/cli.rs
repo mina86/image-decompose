@@ -1,7 +1,7 @@
 use std::io::BufRead;
 use std::str::FromStr;
 
-use clap::Clap;
+use clap::Parser;
 use image::GenericImageView;
 
 
@@ -91,14 +91,14 @@ impl std::str::FromStr for Dimensions {
 }
 
 fn parse_number_pair(arg: &[u8]) -> Option<(u32, u8, u32, &[u8])> {
-    let n = arg.iter().take_while(|&&d| b'0' <= d && d <= b'9').count();
+    let n = arg.iter().copied().take_while(u8::is_ascii_digit).count();
     let (a, arg) = arg.split_at(n);
     let a = u32::from_str(unsafe { std::str::from_utf8_unchecked(a) }).ok()?;
     let (&sep, arg) = arg.split_first()?;
     if sep <= 32 || sep >= 127 {
         return None;
     }
-    let n = arg.iter().take_while(|&&d| b'0' <= d && d <= b'9').count();
+    let n = arg.iter().copied().take_while(u8::is_ascii_digit).count();
     let (b, arg) = arg.split_at(n);
     let b = u32::from_str(unsafe { std::str::from_utf8_unchecked(b) }).ok()?;
     Some((a, sep, b, arg))
@@ -218,7 +218,7 @@ impl std::str::FromStr for SpaceArg {
 }
 
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(
     max_term_width = 80,
     setting = clap::AppSettings::ArgRequiredElseHelp,
@@ -256,7 +256,7 @@ pub struct Opts {
     /// spaces are RGB, lin-RGB (linear RGB w/o gamma correction), XYZ, xyY,
     /// HSL, HSV, HWB, Lab, LCHab, Luv and LCHuv.  Names are compared
     /// case-insensitively.
-    #[clap(short, long, value_delimiter(","))]
+    #[clap(short, long, value_delimiter(','))]
     pub spaces: Vec<SpaceArg>,
 
     /// Save resulting WebP images with given quality.  Quality can be any
