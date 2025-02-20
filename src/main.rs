@@ -31,7 +31,7 @@ fn output_directory<'a>(
     } else if let Some(parent) = src_file.parent() {
         Ok(std::borrow::Cow::Borrowed(parent))
     } else {
-        std::env::current_dir().map(|cwd| std::borrow::Cow::Owned(cwd))
+        std::env::current_dir().map(std::borrow::Cow::Owned)
     }
 }
 
@@ -125,11 +125,12 @@ fn main() -> std::process::ExitCode {
     }
     let opts = opts;
     if let Some(num) = opts.jobs {
-        rayon::ThreadPoolBuilder::new()
+        let res = rayon::ThreadPoolBuilder::new()
             .num_threads(num.max(1))
-            .build_global()
-            .err()
-            .map(|err| eprintln!("{}", err));
+            .build_global();
+        if let Err(err) = res {
+            eprintln!("{err}");
+        }
     }
     let errors = opts
         .files

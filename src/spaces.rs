@@ -58,7 +58,9 @@ pub fn build_image(
     for (src_row, dst_row) in src_rows.zip(dst_rows) {
         let (cpy_row, dst_row) = dst_row.split_at_mut(width as usize);
         // SAFETY: It’s safe to convert &[T; N] into &[MaybeUninit<T>; N].
-        cpy_row.copy_from_slice(unsafe { std::mem::transmute(src_row) });
+        cpy_row.copy_from_slice(unsafe {
+            std::mem::transmute::<&[Rgb], &[UnRgb]>(src_row)
+        });
 
         for (dst, src) in dst_row.iter_mut().zip(src_row) {
             let channels = Channels(dst as *mut _, width as usize);
@@ -101,9 +103,9 @@ fn rgb_fill_channels(mut channels: Channels, rgb: Rgb) {
 
 fn lin_rgb_fill_channels(mut channels: Channels, rgb: Rgb) {
     let [r, g, b] = srgb::gamma::linear_from_u8(rgb);
-    channels.set_rgb(0, [round_u8(r) as u8, 0, 0]);
-    channels.set_rgb(1, [0, round_u8(g) as u8, 0]);
-    channels.set_rgb(2, [0, 0, round_u8(b) as u8]);
+    channels.set_rgb(0, [round_u8(r), 0, 0]);
+    channels.set_rgb(1, [0, round_u8(g), 0]);
+    channels.set_rgb(2, [0, 0, round_u8(b)]);
 }
 
 
@@ -156,7 +158,7 @@ fn hs_common_from_rgb(
 
     channels.set_rgb(
         0,
-        if hue != hue {
+        if hue.is_nan() {
             [0, 0, 0]
         } else {
             let x = 0.5 - 0.5 * (hue % 2.0 - 1.0).abs();
@@ -186,7 +188,7 @@ fn hsl_fill_channels(mut channels: Channels, rgb: Rgb) {
         range as f32 / (255 - (sum - 255).abs()) as f32
     };
 
-    channels.set_grey(1, round_u8(saturation) as u8);
+    channels.set_grey(1, round_u8(saturation));
     channels.set_grey(2, (sum / 2) as u8);
 }
 
@@ -199,7 +201,7 @@ fn hsv_fill_channels(mut channels: Channels, rgb: Rgb) {
         range as f32 / max as f32
     };
 
-    channels.set_grey(1, round_u8(saturation) as u8);
+    channels.set_grey(1, round_u8(saturation));
     channels.set_grey(2, max);
 }
 

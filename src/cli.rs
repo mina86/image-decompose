@@ -9,10 +9,10 @@ use image::GenericImageView;
 macro_rules! perr {
     ($path:expr, $fmt:literal, $($arg:tt)*) => {{
         let path: &::std::ffi::OsStr = $path.as_ref();
-        crate::cli::perr_impl(path, std::format_args!($fmt, $($arg)*));
+        $crate::cli::perr_impl(path, std::format_args!($fmt, $($arg)*));
     }};
     ($path:expr, $msg:expr) => {
-        crate::perr!($path, "{}", $msg);
+        $crate::perr!($path, "{}", $msg);
     };
 }
 
@@ -43,7 +43,7 @@ impl std::str::FromStr for Quality {
         }
         match f32::from_str(q) {
             Err(err) => Err(format!("expected number or ‘lossless’: {}", err)),
-            Ok(q) if 0.0 <= q && q <= 100.0 => Ok(Self(q)),
+            Ok(q) if (0.0..=100.0).contains(&q) => Ok(Self(q)),
             Ok(q) => Err(format!("expected number from 0 to 100; got {}", q)),
         }
     }
