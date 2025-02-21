@@ -1,20 +1,22 @@
-use image::RgbImage as Image;
+use core::mem::{transmute, MaybeUninit};
 
 type Rgb = [u8; 3];
-type UnRgb = [std::mem::MaybeUninit<u8>; 3];
 
+struct Channels<'a>(&'a mut [MaybeUninit<Rgb>], usize);
 
-struct Channels(*mut UnRgb, usize);
-
-impl Channels {
-    fn set_rgb(&mut self, channel: usize, rgb: Rgb) {
-        // SAFETY: Caller guarantees that self.0 is a pointer to within a slice
-        // such that all the indexes are valid.
-        let pixel = unsafe { &mut *self.0.add(self.1 * channel) };
-        pixel[0].write(rgb[0]);
-        pixel[1].write(rgb[1]);
-        pixel[2].write(rgb[2]);
+impl<'a> Channels<'a> {
+    fn new(
+        row: &'a mut [MaybeUninit<Rgb>],
+        offset: usize,
+        width: usize,
+    ) -> Self {
+        Self(&mut row[offset..], width)
     }
+
+    fn set_rgb(&mut self, channel: usize, rgb: Rgb) {
+        self.0[self.1.checked_mul(channel).unwrap()].write(rgb);
+    }
+
     fn set_grey(&mut self, channel: usize, value: u8) {
         self.set_rgb(channel, [value, value, value]);
     }
@@ -41,58 +43,68 @@ pub struct Space {
 
 pub fn build_image(
     space: &Space,
-    src_image: &Image,
+    src_image: &image::RgbImage,
 ) -> Option<(u32, u32, Box<[u8]>)> {
-    let (width, height) = src_image.dimensions();
-    width.checked_mul(space.channels as u32 + 1)?;
+    let (src_width, height) = src_image.dimensions();
+    let dst_width = src_width.checked_mul(space.channels as u32 + 1)?;
 
-    let src_buffer = src_image.as_raw().as_slice();
-    let mut dst_buffer = Box::<[u8]>::new_uninit_slice(
-        src_buffer.len().checked_mul(space.channels + 1)?,
-    );
+    let src_rows = get_src_rows(src_image.as_raw().as_slice(), src_width);
 
-    let dst_rows = as_chunks_mut::<3, _>(&mut dst_buffer)
-        .chunks_exact_mut(width as usize * (space.channels + 1));
-    let src_rows = as_chunks::<3, _>(src_buffer).chunks_exact(width as usize);
+    let dst_size = dst_width.checked_mul(height)?.checked_mul(3)?;
+    let dst_size = usize::try_from(dst_size).ok()?;
+    let mut dst_buffer = Box::<[u8]>::new_uninit_slice(dst_size);
+    let dst_rows = get_dst_rows(&mut dst_buffer, dst_width);
 
     for (src_row, dst_row) in src_rows.zip(dst_rows) {
-        let (cpy_row, dst_row) = dst_row.split_at_mut(width as usize);
+        let (cpy_row, dst_row) = dst_row.split_at_mut(src_width as usize);
+
+        // Copy the original image.
         // SAFETY: It’s safe to convert &[T; N] into &[MaybeUninit<T>; N].
         cpy_row.copy_from_slice(unsafe {
-            std::mem::transmute::<&[Rgb], &[UnRgb]>(src_row)
+            transmute::<&[Rgb], &[MaybeUninit<Rgb>]>(src_row)
         });
 
-        for (dst, src) in dst_row.iter_mut().zip(src_row) {
-            let channels = Channels(dst as *mut _, width as usize);
-            (space.fill_channels)(channels, *src);
+        // Fill the decomposed channel data.
+        for (idx, src) in src_row.iter().copied().enumerate() {
+            (space.fill_channels)(
+                Channels::new(dst_row, idx, src_width as usize),
+                src,
+            );
         }
     }
 
     // SAFETY: All data has been initialised.
     let dst_buffer = unsafe { dst_buffer.assume_init() };
-    Some((
-        width.checked_mul(space.channels as u32 + 1)?,
-        height,
-        dst_buffer,
-    ))
+    Some((dst_width, height, dst_buffer))
 }
 
 
-// TODO(mina86): Remove once [T].as_chunks stabilises.
-fn as_chunks<const N: usize, T>(slice: &[T]) -> &[[T; N]] {
-    let len = slice.len() / N;
-    let ptr = slice.as_ptr().cast();
-    // SAFETY: `len * N ≤ slice.len()`
-    unsafe { core::slice::from_raw_parts(ptr, len * N) }
+fn get_src_rows(
+    buffer: &[u8],
+    width: u32,
+) -> std::slice::ChunksExact<'_, [u8; 3]> {
+    assert!(buffer.len() % 3 == 0);
+    let len = buffer.len() / 3;
+    let ptr = buffer.as_ptr().cast();
+    // SAFETY: `len * 3 == buffer.len()`
+    let pixels: &[[u8; 3]] = unsafe { core::slice::from_raw_parts(ptr, len) };
+    pixels.chunks_exact(usize::try_from(width).unwrap())
 }
 
-// TODO(mina86): Remove once [T].as_chunks_mut stabilises.
-fn as_chunks_mut<const N: usize, T>(slice: &mut [T]) -> &mut [[T; N]] {
-    let len = slice.len() / N;
-    let ptr = slice.as_mut_ptr().cast();
-    // SAFETY: `len * N ≤ slice.len()`
-    unsafe { core::slice::from_raw_parts_mut(ptr, len * N) }
+fn get_dst_rows(
+    buffer: &mut [MaybeUninit<u8>],
+    width: u32,
+) -> std::slice::ChunksExactMut<'_, MaybeUninit<[u8; 3]>> {
+    assert!(buffer.len() % 3 == 0);
+    let len = buffer.len() / 3;
+    let ptr = buffer.as_mut_ptr().cast();
+    // SAFETY: `len * 3 == buffer.len()` and [MU<u8>; 3] has the same layout as
+    // MU<[u8; 3]>.
+    let pixels: &mut [MaybeUninit<[u8; 3]>] =
+        unsafe { core::slice::from_raw_parts_mut(ptr, len) };
+    pixels.chunks_exact_mut(usize::try_from(width).unwrap())
 }
+
 
 
 fn rgb_fill_channels(mut channels: Channels, rgb: Rgb) {
