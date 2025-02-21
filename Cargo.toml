@@ -9,7 +9,7 @@ authors       = ["Michal Nazarewicz <mina86@mina86.com>"]
 license       = "GPL-3.0-or-later"
 repository    = "https://github.com/mina86/image-decompose"
 documentation = "https://docs.rs/image-decompose"
-edition       = "2018"
+edition       = "2021"
 
 [dependencies]
 clap = { version = "3.2", features = ["derive"] }
